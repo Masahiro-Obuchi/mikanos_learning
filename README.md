@@ -1,0 +1,2 @@
+# mikanos_learning
+ゼロからのOS自作入門を写経していきます
