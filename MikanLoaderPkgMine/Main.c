@@ -9,7 +9,6 @@
 #include <Protocol/BlockIo.h>
 #include <Guid/FileInfo.h>
 
-// #@@range_begin(struct_memory_map)
 struct MemoryMap
 {
     UINTN buffer_size;
@@ -19,9 +18,7 @@ struct MemoryMap
     UINTN descriptor_size;
     UINT32 descriptor_version;
 };
-// #@@range_end(struct_memory_map)
 
-// #@@range_begin(get_memory_map)
 EFI_STATUS GetMemoryMap(struct MemoryMap *map)
 {
     if (map->buffer == NULL)
@@ -37,7 +34,6 @@ EFI_STATUS GetMemoryMap(struct MemoryMap *map)
         &map->descriptor_size,
         &map->descriptor_version);
 }
-// #@@range_end(get_memory_map)
 
 const CHAR16 *GetMemoryTypeUnicode(EFI_MEMORY_TYPE type)
 {
@@ -79,9 +75,7 @@ const CHAR16 *GetMemoryTypeUnicode(EFI_MEMORY_TYPE type)
         return L"InvalidMemoryType";
     }
 }
-// #@@range_end(get_memory_type)
 
-// #@@range_begin(save_memory_map)
 EFI_STATUS SaveMemoryMap(struct MemoryMap *map, EFI_FILE_PROTOCOL *file)
 {
     CHAR8 buf[256];
@@ -102,7 +96,7 @@ EFI_STATUS SaveMemoryMap(struct MemoryMap *map, EFI_FILE_PROTOCOL *file)
          iter += map->descriptor_size, i++)
     {
         EFI_MEMORY_DESCRIPTOR *desc = (EFI_MEMORY_DESCRIPTOR *)iter;
-        len = AsciiPrint(
+        len = AsciiSPrint(
             buf, sizeof(buf),
             "%u, %x, %-ls, %08lx, %lx, %lx\n",
             i, desc->Type, GetMemoryTypeUnicode(desc->Type),
@@ -113,7 +107,6 @@ EFI_STATUS SaveMemoryMap(struct MemoryMap *map, EFI_FILE_PROTOCOL *file)
 
     return EFI_SUCCESS;
 }
-// #@@range_end(save_memory_map)
 
 EFI_STATUS OpenRootDir(EFI_HANDLE image_handle, EFI_FILE_PROTOCOL **root)
 {
@@ -189,9 +182,8 @@ EFI_STATUS EFIAPI UefiMain(
     EFI_HANDLE image_handle,
     EFI_SYSTEM_TABLE *system_table)
 {
-    Print(L"Hello, Mikan World\n");
+    Print(L"Hello, Mikan World!\n");
 
-    // #@@range_begin(main)
     CHAR8 memmap_buf[4096 * 4];
     struct MemoryMap memmap = {sizeof(memmap_buf), memmap_buf, 0, 0, 0, 0};
     GetMemoryMap(&memmap);
@@ -206,9 +198,7 @@ EFI_STATUS EFIAPI UefiMain(
 
     SaveMemoryMap(&memmap, memmap_file);
     memmap_file->Close(memmap_file);
-    // #@@range_end(main)
 
-    // #@@range_begin(gop)
     EFI_GRAPHICS_OUTPUT_PROTOCOL *gop;
     OpenGOP(image_handle, &gop);
     Print(L"Resolution: %ux%u, Pixel Format: %s, %u pixels/line\n",
@@ -228,9 +218,7 @@ EFI_STATUS EFIAPI UefiMain(
         frame_buffer[i] = 255;
     }
     */
-    // #@@range_end(gop)
 
-    // #@@range_begin(read_kernel)
     EFI_FILE_PROTOCOL *kernel_file;
     root_dir->Open(
         root_dir, &kernel_file, L"\\kernel.elf",
@@ -251,7 +239,6 @@ EFI_STATUS EFIAPI UefiMain(
         (kernel_file_size + 0xfff) / 0x1000, &kernel_base_addr);
     kernel_file->Read(kernel_file, &kernel_file_size, (VOID *)kernel_base_addr);
     Print(L"Kernel: 0x%0lx (%lu bytes)\n", kernel_base_addr, kernel_file_size);
-    // #@@range_end(read_kernel)
 
     // #@@range_begin(exit_bs)
     EFI_STATUS status;
@@ -268,17 +255,19 @@ EFI_STATUS EFIAPI UefiMain(
         status = gBS->ExitBootServices(image_handle, memmap.map_key);
         if (EFI_ERROR(status))
         {
-            Print(L"Could not exit boot services: %r\n", status);
+            Print(L"Could not exit boot service: %r\n", status);
             while (1)
                 ;
         }
     }
     // #@@range_end(exit_bs)
 
-    // #@@range_begin(call_kernel)
     UINT64 entry_addr = *(UINT64 *)(kernel_base_addr + 24);
 
-    typedef void EntryPointType(UINT64, UINT64); // 「引数と戻り値がどちらもvoid型であるような関数」を表すEntryPointTypeという型を新しく作っている (80ページに解説あり)
+    Print(L"Before Entry Point\n");
+
+    // #@@range_begin(call_kernel)
+    typedef void EntryPointType(UINT64, UINT64);
     EntryPointType *entry_point = (EntryPointType *)entry_addr;
     entry_point(gop->Mode->FrameBufferBase, gop->Mode->FrameBufferSize);
     // #@@range_end(call_kernel)
