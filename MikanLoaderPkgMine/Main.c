@@ -88,7 +88,7 @@ EFI_STATUS SaveMemoryMap(struct MemoryMap *map, EFI_FILE_PROTOCOL *file)
     UINTN len;
 
     CHAR8 *header =
-        "Index, Type, Type(name), PhysicalStart, NumbetOfPages, Attribute\n";
+        "Index, Type, Type(name), PhysicalStart, NumberOfPages, Attribute\n";
     len = AsciiStrLen(header);
     file->Write(file, &len, header);
 
@@ -217,15 +217,17 @@ EFI_STATUS EFIAPI UefiMain(
           GetPixelFormatUnicode(gop->Mode->Info->PixelFormat),
           gop->Mode->Info->PixelsPerScanLine);
     Print(L"Frame Buffer: 0x%0lx - 0x%0lx, Size: %lu bytes\n",
-          gop->Mode->FrameBufferSize,
+          gop->Mode->FrameBufferBase,
           gop->Mode->FrameBufferBase + gop->Mode->FrameBufferSize,
           gop->Mode->FrameBufferSize);
 
+    /*
     UINT8 *frame_buffer = (UINT8 *)gop->Mode->FrameBufferBase;
     for (UINTN i = 0; i < gop->Mode->FrameBufferSize; ++i)
     {
         frame_buffer[i] = 255;
     }
+    */
     // #@@range_end(gop)
 
     // #@@range_begin(read_kernel)
@@ -276,9 +278,9 @@ EFI_STATUS EFIAPI UefiMain(
     // #@@range_begin(call_kernel)
     UINT64 entry_addr = *(UINT64 *)(kernel_base_addr + 24);
 
-    typedef void EntryPointType(void); // 「引数と戻り値がどちらもvoid型であるような関数」を表すEntryPointTypeという型を新しく作っている (80ページに解説あり)
+    typedef void EntryPointType(UINT64, UINT64); // 「引数と戻り値がどちらもvoid型であるような関数」を表すEntryPointTypeという型を新しく作っている (80ページに解説あり)
     EntryPointType *entry_point = (EntryPointType *)entry_addr;
-    entry_point();
+    entry_point(gop->Mode->FrameBufferBase, gop->Mode->FrameBufferSize);
     // #@@range_end(call_kernel)
 
     Print(L"All done\n");
