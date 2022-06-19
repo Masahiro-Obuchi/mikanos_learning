@@ -3,13 +3,30 @@
 
 #include "frame_buffer_config.hpp"
 
-// #@@range_begin(write_pixel)
+const uint8_t kFontA[16] = {
+    0b00000000,
+    0b00011000,
+    0b00011000,
+    0b00011000,
+    0b00011000,
+    0b00100100,
+    0b00100100,
+    0b00100100,
+    0b00100100,
+    0b01111110,
+    0b01000010,
+    0b01000010,
+    0b01000010,
+    0b11100111,
+    0b00000000,
+    0b00000000,
+};
+
 struct PixelColor
 {
     uint8_t r, g, b;
 };
 
-// #@@range_begin(pixel_writer)
 class PixelWriter
 {
 public:
@@ -28,9 +45,7 @@ protected:
 private:
     const FrameBufferConfig &config_;
 };
-// #@@range_end(pixel_writer)
 
-// #@@range_begin(derived_pixel_writer)
 class RGBResv8BitPerColorPixelWriter : public PixelWriter
 {
 public:
@@ -45,6 +60,25 @@ public:
     }
 };
 
+void WriteAscii(PixelWriter &writer, int x, int y, char c, const PixelColor &color)
+{
+    if (c != 'A')
+    {
+        return;
+    }
+
+    for (int dy = 0; dy < 16; dy++)
+    {
+        for (int dx = 0; dx < 16; dx++)
+        {
+            if ((kFontA[dy] << dx) & 0x80u)
+            {
+                writer.Write(x + dx, y + dy, color);
+            }
+        }
+    }
+}
+
 class BGRResv8BitPerColorPixelWriter : public PixelWriter
 {
 public:
@@ -58,9 +92,7 @@ public:
         p[2] = c.r;
     }
 };
-// #@@range_end(derived_pixel_writer)
 
-// #@@range_begin(placement_new)
 void *operator new(size_t size, void *buf)
 {
     return buf;
@@ -69,12 +101,10 @@ void *operator new(size_t size, void *buf)
 void operator delete(void *obj) noexcept
 {
 }
-// #@@range_end(placement_new)
 
 char pixel_writer_buf[sizeof(RGBResv8BitPerColorPixelWriter)];
 PixelWriter *pixel_writer;
 
-// #@@range_begin(call_pixel_writer)
 extern "C" void KernelMain(const FrameBufferConfig &frame_buffer_config)
 {
     switch (frame_buffer_config.pixel_format)
@@ -101,7 +131,10 @@ extern "C" void KernelMain(const FrameBufferConfig &frame_buffer_config)
             pixel_writer->Write(x, y, {0, 255, 0});
         }
     }
+
+    WriteAscii(*pixel_writer, 50, 50, 'A', {0, 0, 0});
+    WriteAscii(*pixel_writer, 58, 50, 'A', {0, 0, 0});
+
     while (1)
         __asm__("hlt");
 }
-// #@@range_end(call_pixel_writer)
